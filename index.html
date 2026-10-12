@@ -561,13 +561,20 @@ window.DATA = {"titre": "LA TRACE", "conf": "DCO ABC", "sel": "dco-abc-2026", "v
   }
 
   function ouvrir() {
+    const params = new URLSearchParams(location.search);
+    // ?reset=1 : remet ce téléphone à zéro (utile pour tester), puis retire le paramètre de l'adresse.
+    if (params.get('reset')) {
+      vus = []; gagne = null; stock.ecrire('vus', []); stock.ecrire('gagne', null);
+      try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignoré */ }
+      params.delete('reset');
+    }
     compteurs();
-    const code = new URLSearchParams(location.search).get('c');
-    if (gagne) return afficherGagne();
-    if (!code) return montrer('accueil');
+    const code = params.get('c');
+    if (!code) return gagne ? afficherGagne() : montrer('accueil');
     const idx = D.tokens.indexOf(code);
     if (idx < 0) return montrer('invalide');
     const reel = sha(`${D.sel}:token:${code}`) === D.reelHash;
+    // Après une victoire, scanner un QR code (même le bon) se rejoue normalement ; l'indice ne s'affiche qu'à la victoire.
     if (vus.includes(code)) return reel ? lancerJeu(code) : pasBon();   // déjà résolu : on ne repose pas la question
     poserQuestion(idx, code, reel);
   }
