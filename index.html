@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<title>La trace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;600;700&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root {
+  --noir: #050506;
+  --panneau: #0d0d11;
+  --os: #ddd8cb;
+  --terne: #9d998f;
+  --sang: #b3121b;
+  --sang-vif: #e5303a;
+  --rouille: #3b0a0e;
+  --acier: #8fa3ad;
+  --bon: #a5d9b4;
+  --ligne: #2c2c33;
+  --titre: "Anton", Impact, "Arial Narrow Bold", sans-serif;
+  --corps: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --horodate: "VT323", Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: var(--noir);
+  color: var(--os);
+  font-family: var(--corps);
+  font-size: clamp(1.1rem, 1vw + .75rem, 1.4rem);
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* ── Image de caméra : vignette, grain, lignes ────────────── */
+.vignette {
+  position: fixed; inset: 0; pointer-events: none; z-index: 1;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 25%, rgba(0, 0, 0, .75) 100%),
+    radial-gradient(ellipse at 50% 120%, rgba(179, 18, 27, .16), transparent 55%);
+}
+.grain {
+  position: fixed; inset: -50%; pointer-events: none; z-index: 4;
+  opacity: .12;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  animation: grain .6s steps(4) infinite;
+}
+@keyframes grain {
+  25% { transform: translate(-3%, 2%); }
+  50% { transform: translate(2%, -3%); }
+  75% { transform: translate(-2%, -1%); }
+}
+.lignes {
+  position: fixed; inset: 0; pointer-events: none; z-index: 4;
+  background: repeating-linear-gradient(transparent 0 2px, rgba(0, 0, 0, .28) 2px 3px);
+}
+.balayage {
+  position: fixed; left: 0; right: 0; top: -20vh; height: 18vh; pointer-events: none; z-index: 3;
+  background: linear-gradient(transparent, rgba(221, 216, 203, .045), transparent);
+  animation: balaye 7s linear infinite;
+}
+@keyframes balaye { to { transform: translateY(140vh); } }
+
+.cam {
+  position: fixed; inset: 14px; pointer-events: none; z-index: 5;
+  font: 1.35rem/1 var(--horodate); color: var(--os); opacity: .8;
+}
+.cam::before, .cam::after, .cam i::before, .cam i::after {
+  content: ""; position: absolute; width: 26px; height: 26px; border: 0 solid var(--os);
+}
+.cam::before { top: 0; left: 0; border-width: 2px 0 0 2px; }
+.cam::after { top: 0; right: 0; border-width: 2px 2px 0 0; }
+.cam i::before { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+.cam i::after { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+.cam .rec { position: absolute; top: 12px; left: 42px; display: flex; align-items: center; gap: .55rem; }
+.cam .rec b { width: 12px; height: 12px; border-radius: 50%; background: var(--sang-vif); box-shadow: 0 0 10px var(--sang-vif); animation: rec 1.4s steps(1) infinite; }
+@keyframes rec { 50% { opacity: 0; } }
+.cam .heure { position: absolute; bottom: 12px; left: 42px; }
+.cam .nom { position: absolute; bottom: 12px; right: 42px; }
+
+body.alerte .vignette { animation: alerte .45s steps(2) infinite; }
+@keyframes alerte {
+  0% { background: radial-gradient(ellipse at 50% 45%, rgba(179, 18, 27, .05) 25%, rgba(120, 0, 8, .8) 100%); }
+  50% { background: radial-gradient(ellipse at 50% 45%, transparent 25%, rgba(0, 0, 0, .9) 100%); }
+}
+
+/* ── Bug au lancement ─────────────────────────────────────── */
+.neige { display: none; position: fixed; inset: 0; width: 100%; height: 100%; z-index: 8; pointer-events: none; image-rendering: pixelated; opacity: .85; }
+.neige.on { display: block; }
+.erreur {
+  margin: 0; visibility: hidden;
+  padding: .05em .35em;
+  font-family: var(--titre); font-size: clamp(3.5rem, min(18vw, 24vh), 13rem); line-height: 1.05; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--os); background: var(--sang);
+  text-shadow: -4px 0 #000, 4px 0 rgba(143, 163, 173, .6);
+}
+.erreur-sub { margin: 0; visibility: hidden; font-family: var(--titre); font-size: clamp(1.4rem, 4vw, 2.6rem); letter-spacing: .3em; text-transform: uppercase; color: var(--sang-vif); }
+.bugtxt { margin: 0; visibility: hidden; font: clamp(1.5rem, 3.5vw, 2.4rem)/1.3 var(--horodate); color: var(--acier); letter-spacing: .08em; min-height: 3em; }
+.bugok { margin: 0; visibility: hidden; position: absolute; font-family: var(--titre); font-size: clamp(2.6rem, 10vw, 7rem); letter-spacing: .08em; text-transform: uppercase; color: var(--os); text-shadow: -3px 0 rgba(179, 18, 27, .9), 3px 0 rgba(143, 163, 173, .4); }
+#s-bug { position: relative; min-height: 70vh; justify-content: center; }
+
+/* ── Écrans ───────────────────────────────────────────────── */
+main {
+  position: relative; z-index: 2;
+  min-height: 100vh;
+  display: grid; place-items: center;
+  padding: 3.2rem 16px;
+}
+.screen { display: none; width: min(100%, 58rem); flex-direction: column; align-items: center; text-align: center; gap: 1.4rem; }
+.screen.on { display: flex; }
+
+.logo {
+  margin: 0;
+  font-family: var(--titre);
+  font-weight: 400;
+  font-size: clamp(3.4rem, 13vw, 10.5rem);
+  line-height: .95;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  color: var(--os);
+  text-shadow: -3px 0 rgba(179, 18, 27, .85), 3px 0 rgba(143, 163, 173, .35), 0 0 40px rgba(179, 18, 27, .35);
+  animation: coupure 6s steps(1) infinite;
+}
+@keyframes coupure {
+  0%, 90%, 100% { transform: none; opacity: 1; clip-path: none; }
+  91% { transform: translateX(-8px); opacity: .6; clip-path: inset(10% 0 55% 0); }
+  92% { transform: translateX(10px); opacity: 1; clip-path: inset(55% 0 12% 0); }
+  93% { transform: none; opacity: .35; clip-path: none; }
+  94% { opacity: 1; }
+}
+.sub {
+  margin: 0;
+  font-family: var(--corps);
+  font-weight: 600;
+  font-size: clamp(1.1rem, 2.2vw, 1.5rem);
+  letter-spacing: .12em;
+  color: var(--sang-vif);
+  text-transform: uppercase;
+}
+.lead {
+  margin: 0; max-width: 34rem;
+  color: var(--os);
+  text-shadow: 0 1px 8px #000;
+}
+
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--os); outline-offset: 3px; }
+
+.coin {
+  font-family: var(--titre);
+  font-size: clamp(1.2rem, 2.6vw, 1.7rem);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: .75em 1.8em;
+  background: var(--sang);
+  color: var(--os);
+  border: 2px solid var(--os);
+  border-radius: 2px;
+  box-shadow: 0 0 0 4px var(--noir), 0 0 30px rgba(179, 18, 27, .7);
+  animation: pulse 2.4s ease-in-out infinite;
+  transition: background .15s;
+}
+.coin:hover { background: var(--sang-vif); }
+.coin:active { transform: translateY(2px); animation: none; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 4px var(--noir), 0 0 6px rgba(179, 18, 27, .3); } }
+.petit { margin: 0; font-size: .85em; color: var(--terne); }
+
+/* ── Fenêtre d'intrusion ──────────────────────────────────── */
+.fenetre {
+  width: 100%; text-align: left;
+  background: rgba(5, 5, 6, .92);
+  border: 1px solid var(--sang);
+  box-shadow: 0 0 36px rgba(179, 18, 27, .35);
+}
+.fenetre .barre {
+  padding: .35rem .8rem;
+  background: var(--sang); color: var(--os);
+  font: 1.25rem/1.2 var(--horodate);
+  letter-spacing: .08em;
+}
+.fenetre pre {
+  margin: 0; padding: 1rem;
+  min-height: 11.5rem;
+  font: 1.35rem/1.5 var(--horodate); color: var(--acier);
+  white-space: pre-wrap;
+}
+.fenetre pre .rouge { color: var(--sang-vif); }
+.menace {
+  margin: 0;
+  font-family: var(--titre);
+  font-size: clamp(1.7rem, 5vw, 3.2rem);
+  line-height: 1.1;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--os);
+  text-shadow: -2px 0 rgba(179, 18, 27, .85), 2px 0 rgba(143, 163, 173, .3);
+  min-height: 2.4em;
+}
+/* Le hacker */
+.hacker { display: none; }
+#s-hack.voix-on .fenetre { display: none; }
+#s-hack.voix-on .hacker { display: block; animation: apparait 1.4s steps(14) both; }
+@keyframes apparait {
+  0% { opacity: 0; transform: translateY(14px) scale(.96); filter: brightness(3) contrast(2); }
+  35% { opacity: .5; transform: translateX(-10px); }
+  50% { opacity: .15; transform: translateX(8px); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+.hacker svg { -webkit-mask-image: linear-gradient(#000 62%, transparent 97%); mask-image: linear-gradient(#000 62%, transparent 97%); display: block; width: auto; height: min(46vh, 420px); max-width: 82vw; margin: 0 auto; overflow: visible; }
+.hacker .oeil { fill: var(--sang-vif); filter: drop-shadow(0 0 7px var(--sang-vif)) drop-shadow(0 0 16px var(--sang)); animation: oeil 5s steps(1) infinite; }
+.hacker.parle .oeil { filter: drop-shadow(0 0 10px #ff6a73) drop-shadow(0 0 26px var(--sang-vif)); }
+@keyframes oeil { 0%, 94%, 100% { opacity: 1; } 95% { opacity: .1; } 97% { opacity: 1; } 98% { opacity: .2; } }
+.hacker .voix rect { fill: var(--acier); transform-box: fill-box; transform-origin: center; transform: scaleY(.18); opacity: .45; }
+.hacker.parle .voix rect { opacity: .95; animation: onde .26s ease-in-out infinite alternate; }
+.hacker.parle .voix rect:nth-child(2n) { animation-duration: .19s; animation-delay: -.07s; }
+.hacker.parle .voix rect:nth-child(3n) { animation-duration: .33s; animation-delay: -.12s; }
+.hacker.parle .voix rect:nth-child(5n) { animation-duration: .22s; animation-delay: -.03s; }
+@keyframes onde { from { transform: scaleY(.25); } to { transform: scaleY(2.4); } }
+#s-hack.voix-on .menace { font-size: clamp(1.5rem, 3.8vw, 2.5rem); min-height: 2.6em; }
+.passer { background: none; border: 0; text-decoration: underline; color: var(--terne); padding: .5rem 1rem; }
+
+/* ── Carte, formulaire ────────────────────────────────────── */
+.carte {
+  width: 100%;
+  background: rgba(13, 13, 17, .93);
+  border: 1px solid var(--ligne);
+  border-top: 3px solid var(--sang);
+  box-shadow: 0 10px 40px #000;
+  padding: clamp(1rem, 3vw, 2rem);
+  text-align: left;
+}
+.carte h2 { margin: 0 0 .8rem; font-family: var(--titre); font-weight: 400; font-size: clamp(1.5rem, 3.4vw, 2.2rem); letter-spacing: .05em; text-transform: uppercase; color: var(--os); }
+.regles { margin: 0 0 1.25rem; padding-left: 1.25rem; color: var(--terne); }
+.regles li { margin-bottom: .3rem; }
+label { display: block; margin-bottom: .35rem; font-weight: 600; }
+input[type="text"] {
+  width: 100%;
+  font: inherit; font-size: 1.2em;
+  padding: .6em .8em;
+  background: var(--noir); color: var(--os);
+  border: 1px solid var(--terne); border-radius: 2px;
+}
+input[type="text"]:focus { outline: 3px solid var(--os); outline-offset: 2px; border-color: var(--sang-vif); }
+.ligne { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+
+.bouton {
+  font-family: var(--titre);
+  font-size: 1.1rem; letter-spacing: .1em; text-transform: uppercase;
+  padding: .65em 1.4em;
+  background: var(--os); color: var(--noir);
+  border: 2px solid var(--os); border-radius: 2px;
+  transition: background .12s, color .12s;
+}
+.bouton:hover { background: var(--sang-vif); border-color: var(--sang-vif); color: var(--os); }
+.bouton:active { transform: translateY(2px); }
+.bouton.second { background: transparent; color: var(--os); border-color: var(--terne); }
+.bouton.second:hover { border-color: var(--sang-vif); background: rgba(179, 18, 27, .2); }
+.bouton[hidden] { display: none; }
+.bouton:disabled { opacity: .4; cursor: default; }
+
+/* ── HUD ──────────────────────────────────────────────────── */
+.hud {
+  width: 100%;
+  display: grid; grid-template-columns: 1fr auto; gap: .4rem 1rem; align-items: center;
+  text-align: left;
+  padding: .7rem 1rem;
+  background: rgba(13, 13, 17, .93);
+  border: 1px solid var(--ligne);
+}
+.hud .equipe { font-weight: 700; overflow-wrap: anywhere; }
+.hud .niveau { font-family: var(--titre); letter-spacing: .06em; text-transform: uppercase; color: var(--sang-vif); }
+.hud .temps { grid-column: 1 / -1; display: flex; align-items: center; gap: 1rem; }
+#hTemps { font: 2.6rem/1 var(--horodate); min-width: 3.4ch; color: var(--os); }
+#hTemps.orange { color: #e0a53a; }
+#hTemps.rouge { color: var(--sang-vif); animation: rec .5s steps(1) infinite; }
+.jauge { flex: 1; height: 8px; background: var(--ligne); }
+.jauge i { display: block; height: 100%; width: 100%; background: var(--sang); box-shadow: 0 0 10px var(--sang); transition: width 1s linear; }
+.vies { display: inline-flex; gap: .4rem; align-items: center; color: var(--terne); }
+.vies b { width: 14px; height: 14px; background: var(--sang-vif); box-shadow: 0 0 8px var(--sang); }
+.vies b.perdue { background: transparent; border: 2px solid var(--ligne); box-shadow: none; }
+
+.qtexte { white-space: pre-line; margin: 0 0 1.25rem; font-size: 1.1em; }
+.qtexte .code { display: block; margin: .8rem 0; padding: .7rem; text-align: center; font: 2.1rem/1.2 var(--horodate); color: var(--os); letter-spacing: .16em; background: var(--noir); border: 1px solid var(--ligne); text-shadow: -1px 0 var(--sang), 1px 0 rgba(143, 163, 173, .5); }
+.choix { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .75rem; }
+.choix button {
+  display: flex; align-items: center; gap: .8rem;
+  padding: .7rem 1rem; text-align: left;
+  background: var(--panneau); border: 1px solid var(--terne); border-radius: 2px;
+  font-weight: 600; font-size: 1.1em;
+  transition: border-color .12s, background .12s;
+}
+.choix button kbd { flex: none; display: grid; place-items: center; width: 2em; height: 2em; background: var(--sang); color: var(--os); font: 400 1.1em var(--titre); }
+.choix button:hover:not(:disabled) { border-color: var(--os); background: #17171c; }
+.choix button.bon { border-color: var(--bon); background: rgba(165, 217, 180, .12); box-shadow: 0 0 18px rgba(165, 217, 180, .3); }
+.choix button.mauvais { opacity: .4; text-decoration: line-through; border-color: var(--sang); }
+.choix button:disabled { cursor: default; }
+.saisie { display: flex; flex-wrap: wrap; gap: .75rem; }
+.saisie input { flex: 1 1 14rem; text-transform: uppercase; letter-spacing: .12em; }
+.saisie[hidden], .choix[hidden] { display: none; }
+.message { min-height: 3.2em; margin: 1rem 0 0; font-weight: 600; white-space: pre-line; }
+.message.ok { color: var(--bon); }
+.message.ko { color: var(--sang-vif); }
+.message.info { color: #e0a53a; }
+.suite { margin-top: .5rem; }
+
+.carte.secoue { animation: secoue .35s; border-top-color: var(--sang-vif); }
+@keyframes secoue { 20% { transform: translateX(-10px); } 40% { transform: translateX(9px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(4px); } }
+.carte.reussi { border-top-color: var(--bon); }
+
+/* ── Fin ──────────────────────────────────────────────────── */
+.score {
+  margin: 0;
+  font-family: var(--titre);
+  font-size: clamp(4.5rem, 17vw, 11rem);
+  line-height: 1;
+  text-shadow: -3px 0 rgba(179, 18, 27, .85), 3px 0 rgba(143, 163, 173, .35);
+}
+.verdict { margin: 0; font-family: var(--titre); font-size: clamp(1.4rem, 3.4vw, 2.2rem); letter-spacing: .05em; text-transform: uppercase; }
+.ticket {
+  width: 100%; padding: 1.25rem 1.5rem;
+  background: #0b0b0e;
+  border: 1px solid var(--os);
+  text-align: left;
+  box-shadow: 0 0 30px rgba(221, 216, 203, .12);
+}
+.ticket small { display: block; font: 1.3rem/1.2 var(--horodate); letter-spacing: .1em; color: var(--sang-vif); margin-bottom: .3rem; text-transform: uppercase; }
+.ticket p { margin: 0; font-size: 1.3em; font-weight: 700; }
+.ticket.verrou { border-color: var(--sang); color: var(--terne); }
+.ticket.fausse { border-style: dashed; border-color: #e0a53a; }
+.ticket.fausse small { color: #e0a53a; }
+
+#mute {
+  position: fixed; top: 2.6rem; right: 2.6rem; z-index: 6;
+  width: 2.8rem; height: 2.8rem; border-radius: 50%;
+  background: var(--panneau); border: 1px solid var(--terne);
+  font-size: 1.2rem; line-height: 1;
+}
+#mute[aria-pressed="true"] { border-color: var(--sang-vif); text-decoration: line-through; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hacker, .hacker .oeil, .hacker .voix rect, .neige, .grain, .balayage, .logo, .coin, #hTemps, body.alerte .vignette, .cam .rec b { animation: none !important; }
+  .jauge i { transition: none; }
+}
+@media (prefers-reduced-motion: reduce) { #s-hack.voix-on .hacker { animation: none; } }
+@media (max-width: 480px) {
+  .cam { font-size: 1.05rem; }
+  .cam .nom { display: none; }
+  #mute { top: 3rem; right: 1rem; }
+}
+
+
+/* ── La trace : jeu sur téléphone ── */
+main { padding: 3rem 16px 3.5rem; }
+.screen { gap: 1.1rem; }
+.logo { font-size: clamp(3.4rem, 17vw, 7.5rem); }
+.compteur { margin: 0; font: 1.5rem/1.2 var(--horodate); color: var(--acier); letter-spacing: .06em; }
+.compteur b { color: var(--os); font-weight: 400; }
+.conseil { margin: 0; color: var(--terne); font-size: .95em; max-width: 26rem; }
+.qtitre { margin: 0 0 .6rem; font: 1.4rem/1.2 var(--horodate); color: var(--sang-vif); letter-spacing: .1em; }
+.question { margin: 0 0 1.1rem; font-size: 1.3em; font-weight: 600; line-height: 1.35; }
+.carte form { display: flex; flex-direction: column; gap: .8rem; }
+.carte .bouton { width: 100%; padding: .85em 1em; }
+.carte input[type="text"] { text-transform: none; letter-spacing: 0; }
+.pasbon { margin: 0; font-family: var(--titre); font-size: clamp(2.8rem, 14vw, 6rem); line-height: 1.02; text-transform: uppercase; letter-spacing: .03em; color: var(--os); text-shadow: -3px 0 rgba(179, 18, 27, .9), 3px 0 rgba(143, 163, 173, .4); animation: coupure 5s steps(1) infinite; text-wrap: balance; }
+.pasbon-sub { margin: 0; color: var(--terne); }
+.yeux { width: 150px; height: 40px; margin: .3rem 0; }
+.yeux ellipse { fill: var(--sang-vif); filter: drop-shadow(0 0 7px var(--sang-vif)); animation: oeil 5s steps(1) infinite; }
+@keyframes oeil { 0%, 94%, 100% { opacity: 1; } 95% { opacity: .1; } 97% { opacity: 1; } 98% { opacity: .2; } }
+
+/* Mini-jeu */
+.consigne { margin: 0; color: var(--os); max-width: 26rem; }
+.statut { margin: 0; min-height: 2.2em; font: 1.6rem/1.2 var(--horodate); color: var(--acier); letter-spacing: .06em; }
+.statut.ko { color: var(--sang-vif); }
+.pads { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: min(86vw, 22rem); }
+.pad { aspect-ratio: 1; display: grid; place-items: center; font: 400 3rem/1 var(--titre); color: var(--terne); background: var(--panneau); border: 2px solid var(--terne); border-radius: 4px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: background .06s, box-shadow .06s, color .06s; }
+.pad.on { background: var(--sang); color: var(--os); border-color: var(--os); box-shadow: 0 0 30px rgba(229, 48, 58, .85), inset 0 0 20px rgba(255, 255, 255, .25); }
+.pads[hidden] { display: none; }
+.pads.bloque .pad { opacity: .7; }
+.vies { gap: .5rem; }
+.ticket .heure { display: block; margin-top: .6rem; font: 1.3rem/1.2 var(--horodate); color: #8d0f14; }
+.ticket { background: var(--os); color: var(--noir); border: 0; border-left: 10px dashed var(--sang); }
+.ticket small { color: var(--sang); }
+body.secoue .carte, body.secoue .pads { animation: secoue .35s; }
+.reset { margin-top: .5rem; background: none; border: 0; color: var(--terne); text-decoration: underline; padding: .6rem; }
+</style>
+</head>
+<body>
+<div class="vignette"></div><div class="balayage"></div><div class="lignes"></div><div class="grain"></div>
+<div class="cam" aria-hidden="true"><i></i><span class="rec"><b></b>REC</span><span class="heure" id="camHeure"></span><span class="nom">CAM 03 · SALLE</span></div>
+
+<main>
+  <section id="s-accueil" class="screen on">
+    <h1 class="logo" id="logo"></h1>
+    <p class="sub" id="sub"></p>
+    <p class="lead">Le hacker a caché la clé de sa porte dérobée derrière l'un des QR codes de la salle. Un seul est le bon.</p>
+    <p class="compteur">QR codes explorés : <b id="nbVus">0</b> / <b id="nbTot">30</b></p>
+    <p class="conseil">Cherche un QR code dans la salle et scanne-le avec l'appareil photo de ton téléphone.</p>
+  </section>
+
+  <section id="s-invalide" class="screen">
+    <p class="pasbon">Code illisible</p>
+    <p class="pasbon-sub">Ce QR code ne fait pas partie du jeu. Cherche-en un autre dans la salle.</p>
+  </section>
+
+  <section id="s-question" class="screen">
+    <article class="carte">
+      <p class="qtitre">Question</p>
+      <p class="question" id="qTexte"></p>
+      <form id="qForm" autocomplete="off">
+        <input type="text" id="qInput" aria-label="Ta réponse" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done">
+        <button class="bouton" type="submit">Valider</button>
+      </form>
+      <p class="message" id="qMsg" role="status"></p>
+    </article>
+  </section>
+
+  <section id="s-pasbon" class="screen">
+    <svg class="yeux" viewBox="0 0 150 40" aria-hidden="true"><ellipse cx="45" cy="20" rx="17" ry="5" transform="rotate(8 45 20)"/><ellipse cx="105" cy="20" rx="17" ry="5" transform="rotate(-8 105 20)"/></svg>
+    <p class="pasbon" id="pbTexte"></p>
+    <p class="pasbon-sub">Ce n'est pas le bon QR code.</p>
+    <p class="compteur">Explorés : <b id="nbVus2">0</b> / <b id="nbTot2">30</b></p>
+  </section>
+
+  <section id="s-jeu" class="screen">
+    <h2 class="pasbon" id="jeuTitre">Signal trouvé</h2>
+    <p class="consigne" id="jeuConsigne">Le hacker a verrouillé sa clé. Reproduis la séquence pour la déverrouiller.</p>
+    <button class="bouton" id="btnJeu" type="button">Commencer</button>
+    <p class="statut" id="statut"></p>
+    <div class="pads bloque" id="pads" hidden>
+      <button class="pad" type="button" aria-label="Triangle" data-i="0">▲</button>
+      <button class="pad" type="button" aria-label="Cercle" data-i="1">●</button>
+      <button class="pad" type="button" aria-label="Carré" data-i="2">■</button>
+      <button class="pad" type="button" aria-label="Losange" data-i="3">◆</button>
+    </div>
+    <span class="vies" id="vies" aria-label="Essais restants"></span>
+  </section>
+
+  <section id="s-gagne" class="screen">
+    <h2 class="pasbon" style="color: var(--bon)">Clé déverrouillée</h2>
+    <div class="ticket" style="width:100%">
+      <small>Ton indice</small>
+      <p id="indice"></p>
+      <span class="heure" id="heureVictoire"></span>
+    </div>
+    <p class="conseil" id="gagneNote">Montre cet écran à l'organisateur et note l'indice.</p>
+  </section>
+</main>
+
+<script>
+window.DATA = {"titre": "LA TRACE", "conf": "DCO ABC", "sel": "dco-abc-2026", "vies": 3, "longueur": 5, "vitesse": 650, "faux": ["Cherche encore.", "Plus loin.", "Ce n'est pas celui-là.", "Regarde ailleurs.", "Continue de chercher.", "Ce n'est pas ici.", "Pas le bon. Cherche autre chose."], "tokens": ["9cc071", "88d621", "0228f2", "ecbcac", "af58bb", "5067e6", "54b868", "65ce07", "55b993", "1dc45a", "e189c0", "908762", "02df19", "695241", "80ae26", "33c3a0", "7c7a6b", "960414", "a418ca", "df239c", "8cff93", "95200c", "94d605", "e74969", "5c34b5", "d4e402", "0e70d3", "1591c7", "41a92f", "ddfbef"], "reelHash": "41715043ab254d5f185e922100551af66e8c66091e295abea8f38a19a4af2cd0", "ind": "452ec7035a456911e400f6e0c8239af5890b2ae7e98233c6b184d77bf011321cff6c67f25860572958f62825ad48a0776533666c5b55925b6238c60c224bbf6636f6da2a182bb8bfcd7e", "questions": [{"q": "Quelle est la capitale de la Suisse ?", "type": "texte", "h": ["e1725498b63671c970f0c637d9aee473c790938c847684a09c10dd864700ca5e"]}, {"q": "Combien font 10 × 5 − 3 + 5 ?", "type": "nombre", "h": ["e5fc5749bce1b66ed2c51739cb05853329ca14de9a21a10608353990d8e78717"]}, {"q": "Combien de côtés a un hexagone ?", "type": "nombre", "h": ["ce8643600285e009b196bf47c2da8caa476c402a66a1fcc6f0cec58907b7aa3d", "6a5df845493427fa10213ee79fb429812d2a61a7f2e7ece6b92cf02b7bdada63"]}, {"q": "Quelle est la capitale de l'Australie ?", "type": "texte", "h": ["72e7fb6209e63daca28e4909a5fad33edb52bbafb7c5d13add257de891708fb9"]}, {"q": "Combien font 7 × 8 ?", "type": "nombre", "h": ["b0f7e7617c09721428f30a907ee921a960e309668e5748570aaffa9348f8b91f"]}, {"q": "Quel est le plus grand océan du monde ?", "type": "texte", "h": ["f7f2ea7c9508b1af532acf4e192d3fe97337d1c43dca47994d032b5effad63c8", "05a9efd74e8773f2c479289b82b9652ead24aab8eb18cda852c37b1bdc7c883c"]}, {"q": "Combien de jours compte une année bissextile ?", "type": "nombre", "h": ["cb40cdde75c07c726daeabd70fc28405ca8f4232a9436558ce01c436bf89421f"]}, {"q": "Quelle est la capitale du Canada ?", "type": "texte", "h": ["105ddf7fe167f5635d01e524e8a92d28c306191cb9d31448c4e0374517e953c1"]}, {"q": "Combien font 144 ÷ 12 ?", "type": "nombre", "h": ["369f57a7f4f6d09005fdc7bc4846d6a03063eb7037cd2964bc36d82c84f1d4e1", "39b279b281380f194d0e5b269c82c27a44e9d610935f8d48d4033cbc8d41a084"]}, {"q": "Quelle planète est la plus proche du Soleil ?", "type": "texte", "h": ["6259f0121391f728425a1c2a9d4ae9f5037ccbbaea0cc825175824d690fe7f46"]}, {"q": "Quelle est la capitale de l'Espagne ?", "type": "texte", "h": ["94a1d726e4adbceafea7bccf809ce3904812704e1782e9f2a2c9629a677ccf6e"]}, {"q": "Combien font 15 % de 200 ?", "type": "nombre", "h": ["cb70c2ebb5e4ebb87d8db877adcdc3afa33ffafe14c6ccdf7e3f25d120c8c353", "8f976fc6b8224f99a7e7b61d0b90705eb7607f3058fc9b4bd77e409309f703c4"]}, {"q": "Qui a peint la Joconde ?", "type": "texte", "h": ["cc68cc09caa6b586e86a673a00c97e37777a546d7323957e8879f8c348ca13b3", "05ee40078d00d60d6ff901ffac2945697ac413c3465b1bcb3465252f0a0560b7", "163c228afe2ec63aeb49ebfa165ecd9ea1c724b0bc4701728720c2c009f79fe8", "6b6b56e30347cfb8a77188ed2c304c31ece5a60a40b7c718385e10434281cc44"]}, {"q": "Quelle est la capitale du Brésil ?", "type": "texte", "h": ["f87a543baa4522626d460505a1b2f2d739224eee3c519d8f19dd9e2c823ee3f4"]}, {"q": "Quelle est la racine carrée de 81 ?", "type": "nombre", "h": ["9c056e170530058aae4c9c1786b999425b93d0df87cc26a9d974d38155fd496b", "74a23c2380fd79d2f9987c6edec7d6c64c2318275712d1877672f6474695551f"]}, {"q": "Quel est le plus long fleuve de France ?", "type": "texte", "h": ["014fb62980a06ca5e9868d33ac88324da0c4b6acb51193d47327fffd85846a0b", "014fb62980a06ca5e9868d33ac88324da0c4b6acb51193d47327fffd85846a0b"]}, {"q": "Quel est le symbole chimique de l'eau ?", "type": "texte", "h": ["564a28b3960413ab62a3c4147f77a7e48edd3f4ddf7d6ff633d041fdd45574aa"]}, {"q": "Combien font 2 puissance 6 (2⁶) ?", "type": "nombre", "h": ["305788abff3013177193e33d470eff0b61238ecd810f2479c27166470f7b94a0"]}, {"q": "Quelle est la capitale de l'Égypte ?", "type": "texte", "h": ["edeabbab9b8d00541c27dffaa065c3c6b3bf12b938001fae3a0a4f762b867177", "edeabbab9b8d00541c27dffaa065c3c6b3bf12b938001fae3a0a4f762b867177"]}, {"q": "En quelle année a eu lieu la Révolution française ?", "type": "nombre", "h": ["cef20627cb2ac07e4226f08ec59c077d42734c5cb4f84f2bd145bc4173244e01"]}, {"q": "Combien font 3 + 3 × 3 ?", "type": "nombre", "h": ["369f57a7f4f6d09005fdc7bc4846d6a03063eb7037cd2964bc36d82c84f1d4e1", "39b279b281380f194d0e5b269c82c27a44e9d610935f8d48d4033cbc8d41a084"]}, {"q": "Combien de joueurs une équipe de football aligne-t-elle sur le terrain ?", "type": "nombre", "h": ["cb04986e6d0b9d1ead8ef901fafce867fac5e3e8e5f393d7bf9636767818562a", "e86e18d97a6301bbd888ffb8be8cf4835222a98ab766425bbbf1d9f6c75b8551"]}, {"q": "Quelle est la capitale du Japon ?", "type": "texte", "h": ["b448cd7452a903cdbc5a2422ff95a1e198d51db1cdd4600ae009946f52f329df"]}, {"q": "Quel est le plus grand mammifère du monde ?", "type": "texte", "h": ["c4e7a4a0cf18dd0317958c57e10e3fe0f6819f068b0529e35f082731ffa33614", "c4e7a4a0cf18dd0317958c57e10e3fe0f6819f068b0529e35f082731ffa33614", "11d6d2d1a9c99810fcb92bd74ac9eea332364a6a26ebc5f0b2d7ac48ce790ca4"]}, {"q": "Combien font 1000 − 487 ?", "type": "nombre", "h": ["71a9f5d219f13196f5edfd31c8e0a33abfe61957341a26e0d8252941c78d6066"]}, {"q": "Quelle est la capitale de l'Italie ?", "type": "texte", "h": ["c538daa84ab99dff4078e2304da85db2a24cba099ec3269b4a710fc4fb90ae2e"]}, {"q": "Combien de minutes y a-t-il dans une journée ?", "type": "nombre", "h": ["a9f299060fd9ea90c79e1f5ef8cf788e0162844241e863874719ef94bbf368a2"]}, {"q": "Quel gaz est le plus présent dans l'air que nous respirons ?", "type": "texte", "h": ["814609b1f30af1e9b00d68b197350c18b2ddce66b9fec32259356f442be8e2ab", "814609b1f30af1e9b00d68b197350c18b2ddce66b9fec32259356f442be8e2ab", "b21cd650f25bdc0a6b57cc28d26e20a9ba11c330ebf1f194649b5efd13bd24b5"]}, {"q": "Complète la suite : 2, 4, 8, 16, ?", "type": "nombre", "h": ["0538ae37e5bb260e46b12c2b5d85d67df741a39169cb938af7051cd7645fc085"]}, {"q": "Quelle est la capitale de la Turquie ?", "type": "texte", "h": ["07fc2e29be24a87b07b22f2ff136e1c98a2489e306609ae19ff05fd39973faf7"]}]};
+</script>
+<script>
+(() => {
+  const D = window.DATA;
+  const $ = (id) => document.getElementById(id);
+  const ECRANS = ['accueil', 'invalide', 'question', 'pasbon', 'jeu', 'gagne'];
+  const total = D.tokens.length;
+
+  // ── Mémoire du téléphone (si elle est bloquée, le jeu marche quand même) ──
+  const stock = {
+    lire(cle, defaut) { try { const v = localStorage.getItem('trace_' + cle); return v ? JSON.parse(v) : defaut; } catch (e) { return defaut; } },
+    ecrire(cle, val) { try { localStorage.setItem('trace_' + cle, JSON.stringify(val)); } catch (e) { /* ignoré */ } },
+  };
+  let vus = stock.lire('vus', []);
+  let gagne = stock.lire('gagne', null);
+
+  // ── Son et vibration (discrets, un téléphone en silencieux reste jouable) ──
+  let ctx = null;
+  function audio() {
+    if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  function ton(f, d = .15, type = 'sine', v = .2, delai = 0) {
+    const a = audio(); if (!a) return;
+    const t = a.currentTime + delai, o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + d + .02);
+  }
+  const vibrer = (m) => { try { if (navigator.vibrate) navigator.vibrate(m); } catch (e) { /* ignoré */ } };
+  const sfx = {
+    bon() { [523, 622, 784].forEach((f, i) => ton(f, .25, 'triangle', .18, i * .1)); vibrer(40); },
+    mauvais() { [300, 220, 160].forEach((f, i) => ton(f, .15, 'sawtooth', .18, i * .1)); vibrer([80, 40, 80]); },
+    gagne() { [400, 500, 600, 800, 1000, 1200].forEach((f, i) => ton(f, .1, 'sine', .2, i * .07)); ton(1600, .4, 'sine', .25, .5); vibrer([60, 40, 60, 40, 200]); },
+    pasbon() { ton(70, .8, 'sawtooth', .18); ton(52, 1, 'sine', .3, .05); vibrer(120); },
+  };
+
+  // ── Protection : le code source de la page est public, on n'y met ni réponses ni indice en clair ──
+  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  function sha256Octets(octets) {
+    const l = octets.length, taille = ((l + 9 + 63) >> 6) << 6, m = new Uint8Array(taille);
+    m.set(octets); m[l] = 0x80;
+    const dv = new DataView(m.buffer);
+    dv.setUint32(taille - 4, (l * 8) >>> 0); dv.setUint32(taille - 8, Math.floor((l * 8) / 0x100000000));
+    let h = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    const w = new Uint32Array(64);
+    for (let i = 0; i < taille; i += 64) {
+      for (let t = 0; t < 16; t++) w[t] = dv.getUint32(i + t * 4);
+      for (let t = 16; t < 64; t++) {
+        const a = w[t - 15], b = w[t - 2];
+        const s0 = ((a >>> 7) | (a << 25)) ^ ((a >>> 18) | (a << 14)) ^ (a >>> 3);
+        const s1 = ((b >>> 17) | (b << 15)) ^ ((b >>> 19) | (b << 13)) ^ (b >>> 10);
+        w[t] = (w[t - 16] + s0 + w[t - 7] + s1) >>> 0;
+      }
+      let [a, b, c, d, e, f, g, hh] = h;
+      for (let t = 0; t < 64; t++) {
+        const S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
+        const t1 = (hh + S1 + ((e & f) ^ (~e & g)) + K[t] + w[t]) >>> 0;
+        const S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+        const t2 = (S0 + ((a & b) ^ (a & c) ^ (b & c))) >>> 0;
+        hh = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+      }
+      h = [h[0] + a, h[1] + b, h[2] + c, h[3] + d, h[4] + e, h[5] + f, h[6] + g, h[7] + hh].map((x) => x >>> 0);
+    }
+    const sortie = new Uint8Array(32), so = new DataView(sortie.buffer);
+    h.forEach((x, i) => so.setUint32(i * 4, x));
+    return sortie;
+  }
+  const hex = (o) => [...o].map((x) => x.toString(16).padStart(2, '0')).join('');
+  const sha = (s) => hex(sha256Octets(new TextEncoder().encode(s)));
+  // Déchiffrement de l'indice : flux d'octets dérivé de SHA-256 (clé = identifiant du bon QR code).
+  function dechiffrer(hexChiffre, cle) {
+    const c = new Uint8Array(hexChiffre.match(/../g).map((x) => parseInt(x, 16))), clair = new Uint8Array(c.length);
+    for (let i = 0; i < c.length; i += 32) {
+      const flux = sha256Octets(new TextEncoder().encode(`${cle}:${D.sel}:${i / 32}`));
+      for (let j = 0; j < 32 && i + j < c.length; j++) clair[i + j] = c[i + j] ^ flux[j];
+    }
+    return new TextDecoder().decode(clair);
+  }
+
+  // ── Outils ──
+  const norm = (s) => String(s).toLowerCase().replace(/^(le|la|les|l)['’\s]\s*/, '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+  function montrer(id) { ECRANS.forEach((e) => $('s-' + e).classList.toggle('on', e === id)); window.scrollTo(0, 0); }
+  function message(txt, type) { const m = $('qMsg'); m.textContent = txt || ''; m.className = 'message ' + (type || ''); }
+  function secouer() { document.body.classList.remove('secoue'); void document.body.offsetWidth; document.body.classList.add('secoue'); setTimeout(() => document.body.classList.remove('secoue'), 400); }
+  const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+  const horloge = () => { const d = new Date(), p = (n) => String(n).padStart(2, '0'); $('camHeure').textContent = `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}  ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; };
+  horloge(); setInterval(horloge, 1000);
+
+  function compteurs() {
+    ['nbVus', 'nbVus2'].forEach((i) => ($(i).textContent = vus.length));
+    ['nbTot', 'nbTot2'].forEach((i) => ($(i).textContent = total));
+  }
+
+  // ── Écrans ──
+  $('logo').textContent = D.titre;
+  $('sub').textContent = 'Conférence ' + D.conf;
+  document.title = D.titre + ' — ' + D.conf;
+
+  function afficherGagne() {
+    $('indice').textContent = dechiffrer(D.ind, gagne.cle);
+    $('heureVictoire').textContent = 'Validé à ' + gagne.heure;
+    montrer('gagne');
+  }
+
+  function ouvrir() {
+    compteurs();
+    const code = new URLSearchParams(location.search).get('c');
+    if (gagne) return afficherGagne();
+    if (!code) return montrer('accueil');
+    const idx = D.tokens.indexOf(code);
+    if (idx < 0) return montrer('invalide');
+    const reel = sha(`${D.sel}:token:${code}`) === D.reelHash;
+    if (vus.includes(code)) return reel ? lancerJeu(code) : pasBon();   // déjà résolu : on ne repose pas la question
+    poserQuestion(idx, code, reel);
+  }
+
+  function poserQuestion(idx, code, reel) {
+    const q = D.questions[idx];
+    $('qTexte').textContent = q.q;
+    const champ = $('qInput');
+    champ.value = '';
+    champ.setAttribute('inputmode', q.type === 'nombre' ? 'decimal' : 'text');
+    message('');
+    montrer('question');
+    $('qForm').onsubmit = (e) => {
+      e.preventDefault();
+      audio();
+      const rep = champ.value.trim();
+      if (!rep) return;
+      if (q.h.includes(sha(`${D.sel}:${norm(rep)}`))) {
+        sfx.bon();
+        vus.push(code); stock.ecrire('vus', vus); compteurs();
+        message('Bonne réponse.', 'ok');
+        setTimeout(() => (reel ? lancerJeu(code) : pasBon()), 650);
+      } else {
+        sfx.mauvais(); secouer();
+        message('Ce n\'est pas ça. Réfléchis encore.', 'ko');
+        champ.select();
+      }
+    };
+    setTimeout(() => champ.focus(), 60);
+  }
+
+  let dernierMessage = -1;
+  function pasBon() {
+    let i; do { i = Math.floor(Math.random() * D.faux.length); } while (D.faux.length > 1 && i === dernierMessage);
+    dernierMessage = i;
+    $('pbTexte').textContent = D.faux[i];
+    compteurs();
+    sfx.pasbon();
+    montrer('pasbon');
+  }
+
+  // ── Mini-jeu : reproduire la séquence ──
+  function lancerJeu(code) {
+    montrer('jeu');
+    sfx.gagne();
+    const pads = [...document.querySelectorAll('.pad')];
+    const zone = $('pads'), statut = $('statut'), bouton = $('btnJeu');
+    const notes = [196, 233, 277, 330];
+    let seq = [], pos = 0, vies = D.vies, accepte = false;
+    bouton.hidden = false; zone.hidden = true; statut.textContent = ''; statut.className = 'statut';
+    const majVies = () => { const v = $('vies'); v.textContent = ''; for (let k = 0; k < D.vies; k++) { const b = document.createElement('b'); if (k >= vies) b.className = 'perdue'; v.appendChild(b); } };
+    const nouvelle = () => { seq = Array.from({ length: D.longueur }, () => Math.floor(Math.random() * 4)); };
+    function allumer(i, ms) { pads[i].classList.add('on'); ton(notes[i], ms / 1000 + .1, 'sine', .25); setTimeout(() => pads[i].classList.remove('on'), ms); }
+    async function montrerSequence() {
+      accepte = false; zone.classList.add('bloque');
+      statut.className = 'statut'; statut.textContent = 'Mémorise...';
+      await dormir(800);
+      for (const i of seq) { allumer(i, D.vitesse * 0.6); await dormir(D.vitesse); }
+      pos = 0; accepte = true; zone.classList.remove('bloque');
+      statut.textContent = 'À toi.';
+    }
+    function victoire() {
+      accepte = false;
+      const d = new Date(), p = (n) => String(n).padStart(2, '0');
+      gagne = { heure: `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`, cle: code };
+      stock.ecrire('gagne', gagne);
+      sfx.gagne();
+      setTimeout(afficherGagne, 700);
+    }
+    function erreur() {
+      accepte = false; vies--; majVies(); sfx.mauvais(); secouer();
+      statut.className = 'statut ko';
+      if (vies > 0) {
+        statut.textContent = `Raté. Encore ${vies} essai${vies > 1 ? 's' : ''}.`;
+        setTimeout(montrerSequence, 1500);
+      } else {
+        vies = D.vies; nouvelle();
+        statut.textContent = 'Le code a changé. On recommence.';
+        setTimeout(() => { majVies(); montrerSequence(); }, 1800);
+      }
+    }
+    pads.forEach((pad) => {
+      pad.onpointerdown = (e) => {
+        e.preventDefault();
+        if (!accepte) return;
+        const i = +pad.dataset.i;
+        allumer(i, 180);
+        if (i === seq[pos]) { pos++; if (pos === seq.length) victoire(); } else erreur();
+      };
+    });
+    bouton.onclick = () => { audio(); bouton.hidden = true; zone.hidden = false; nouvelle(); majVies(); montrerSequence(); };
+  }
+
+  ouvrir();
+})();
+
+</script>
+</body>
+</html>
