@@ -353,8 +353,46 @@ input[type="text"]:focus { outline: 3px solid var(--os); outline-offset: 2px; bo
   #mute { top: 3rem; right: 1rem; }
 }
 
+/* Transmission : silhouette textile, lumière froide et modulation par la voix réelle. */
+.transmission-label{font: .85rem/1.5 Consolas,monospace;letter-spacing:.12em;color:#a2c8d0;text-align:left;margin:0 0 10px}
+.transmission-label span{display:inline-block;width:7px;height:7px;background:#e5303a;border-radius:50%;margin-right:8px}
+.transmission-label small{display:block;color:#a2acb4;font-size:.75rem;letter-spacing:.08em}
+.hacker svg{height:min(46vh,430px);max-width:90vw;width:auto;mask-image:linear-gradient(#000 85%,transparent 100%);-webkit-mask-image:linear-gradient(#000 85%,transparent 100%)}
+.hacker .oeil,.hacker.parle .oeil{fill:none;filter:none;animation:none}
+.portrait-hacker{transform-origin:280px 320px;animation:respirationSignal 7s ease-in-out infinite}
+@keyframes respirationSignal{50%{transform:translateY(2px) scale(1.008)}}
+.hacker .voix rect,.hacker.parle .voix rect{fill:#a2c8d0;animation:none;opacity:.7;transform:scaleY(var(--niveau-voix,.12));transition:transform 70ms linear}
+.hacker.parle .screen-reflection{opacity:calc(.3 + var(--energie-voix,0)*.65)}
+#s-hack.voix-on .menace{font-size:clamp(1.2rem,2.5vw,1.8rem);max-width:48rem;min-height:3em;text-wrap:balance}
+@media(prefers-reduced-motion:reduce){.portrait-hacker{animation:none}.hacker .voix rect{transition:none}}
+
+/* Sélections natives : clavier et navigation tactile conservés. */
+#nomEquipe.selection-systeme,#qChoix.missions select.selection-systeme {
+  display:block;width:100%;min-height:58px;max-width:100%;box-sizing:border-box;
+  appearance:none;-webkit-appearance:none;color-scheme:dark;
+  background-color:#101920;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='m5 7 5 5 5-5' fill='none' stroke='%23a2c8d0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 18px center;background-size:20px;
+  color:#f1eee6;border:1px solid #607785;border-left:3px solid #8faab8;border-radius:7px;
+  padding:14px 54px 14px 18px;margin-top:8px;font:600 1.05rem/1.5 var(--corps);
+  cursor:pointer;box-shadow:0 4px 14px #0003;transition:border-color .18s,background-color .18s,box-shadow .18s;
+}
+#nomEquipe.selection-systeme:invalid,#qChoix.missions select.selection-systeme:invalid{color:#bec9ce;border-left-color:#607785}
+#nomEquipe.selection-systeme:hover,#qChoix.missions select.selection-systeme:hover{background-color:#19262e;border-color:#9ebbc8}
+#nomEquipe.selection-systeme:focus-visible,#qChoix.missions select.selection-systeme:focus-visible{outline:2px solid #b8dce6;outline-offset:4px;border-color:#b8dce6;box-shadow:0 0 0 5px #7bb5c217}
+#nomEquipe.selection-systeme:valid,#qChoix.missions select.selection-systeme:valid{border-left-color:#a5d9b4}
+#nomEquipe.selection-systeme:disabled,#qChoix.missions select.selection-systeme:disabled{opacity:.65;cursor:default}
+select.selection-systeme option{background:#101920;color:#f1eee6;font-weight:500;padding:12px}
+select.selection-systeme option:checked{background:#29444e;color:#fff}
+@media(prefers-reduced-motion:reduce){#nomEquipe.selection-systeme,#qChoix.missions select.selection-systeme{transition:none}}
+
 
 /* ── La trace : jeu sur téléphone ── */
+#equipeBarre[hidden] { display:none !important; }
+#equipeBarre .compteur{font-size:1.2rem}
+#changerEquipe{min-height:44px;font-size:.9rem}
+#formEquipeQR .conseil{margin:1rem 0}
+
 main { padding: 3rem 16px 3.5rem; }
 .screen { gap: 1.1rem; }
 .logo { font-size: clamp(3.4rem, 17vw, 7.5rem); }
@@ -394,6 +432,18 @@ body.secoue .carte, body.secoue .pads { animation: secoue .35s; }
 <div class="cam" aria-hidden="true"><i></i><span class="rec"><b></b>REC</span><span class="heure" id="camHeure"></span><span class="nom">CAM 03 · SALLE</span></div>
 
 <main>
+  <div id="equipeBarre" hidden style="width:min(100%,58rem);display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px">
+    <span id="equipeActuelle" class="compteur"></span><button type="button" id="changerEquipe" class="reset">Changer d'équipe</button>
+  </div>
+  <section id="s-equipe" class="screen">
+    <p class="sub">La Trace · Identification</p><h1 class="logo">Votre équipe</h1>
+    <form id="formEquipeQR" class="carte" style="width:min(100%,30rem)">
+      <label for="nomEquipe">Numéro d'équipe</label>
+      <select id="nomEquipe" class="selection-systeme" required><option value="" disabled selected>Choisir une équipe</option></select>
+      <p class="conseil">Choisissez votre numéro de 1 à 10. Votre progression et votre indice seront associés à cette équipe sur ce téléphone.</p>
+      <div class="ligne"><button type="submit" class="bouton">Continuer</button></div>
+    </form>
+  </section>
   <section id="s-accueil" class="screen on">
     <h1 class="logo" id="logo"></h1>
     <p class="sub" id="sub"></p>
@@ -452,19 +502,24 @@ body.secoue .carte, body.secoue .pads { animation: secoue .35s; }
 </main>
 
 <script>
-window.DATA = {"titre": "LA TRACE", "conf": "DCO ABC", "sel": "dco-abc-2026", "vies": 3, "longueur": 5, "vitesse": 650, "faux": ["Cherche encore.", "Plus loin.", "Ce n'est pas celui-là.", "Regarde ailleurs.", "Continue de chercher.", "Ce n'est pas ici.", "Pas le bon. Cherche autre chose."], "tokens": ["9cc071", "88d621", "0228f2", "ecbcac", "af58bb", "5067e6", "54b868", "65ce07", "55b993", "1dc45a", "e189c0", "908762", "02df19", "695241", "80ae26", "33c3a0", "7c7a6b", "960414", "a418ca", "df239c", "8cff93", "95200c", "94d605", "e74969", "5c34b5", "d4e402", "0e70d3", "1591c7", "41a92f", "ddfbef"], "reelHash": "41715043ab254d5f185e922100551af66e8c66091e295abea8f38a19a4af2cd0", "ind": "452ec7035a456911e400f6e0c8239af5890b2ae7e98233c6b184d77bf011321cff6c67f25860572958f62825ad48a0776533666c5b55925b6238c60c224bbf6636f6da2a182bb8bfcd7e", "questions": [{"q": "Quelle est la capitale de la Suisse ?", "type": "texte", "h": ["e1725498b63671c970f0c637d9aee473c790938c847684a09c10dd864700ca5e"]}, {"q": "Combien font 10 × 5 − 3 + 5 ?", "type": "nombre", "h": ["e5fc5749bce1b66ed2c51739cb05853329ca14de9a21a10608353990d8e78717"]}, {"q": "Combien de côtés a un hexagone ?", "type": "nombre", "h": ["ce8643600285e009b196bf47c2da8caa476c402a66a1fcc6f0cec58907b7aa3d", "6a5df845493427fa10213ee79fb429812d2a61a7f2e7ece6b92cf02b7bdada63"]}, {"q": "Quelle est la capitale de l'Australie ?", "type": "texte", "h": ["72e7fb6209e63daca28e4909a5fad33edb52bbafb7c5d13add257de891708fb9"]}, {"q": "Combien font 7 × 8 ?", "type": "nombre", "h": ["b0f7e7617c09721428f30a907ee921a960e309668e5748570aaffa9348f8b91f"]}, {"q": "Quel est le plus grand océan du monde ?", "type": "texte", "h": ["f7f2ea7c9508b1af532acf4e192d3fe97337d1c43dca47994d032b5effad63c8", "05a9efd74e8773f2c479289b82b9652ead24aab8eb18cda852c37b1bdc7c883c"]}, {"q": "Combien de jours compte une année bissextile ?", "type": "nombre", "h": ["cb40cdde75c07c726daeabd70fc28405ca8f4232a9436558ce01c436bf89421f"]}, {"q": "Quelle est la capitale du Canada ?", "type": "texte", "h": ["105ddf7fe167f5635d01e524e8a92d28c306191cb9d31448c4e0374517e953c1"]}, {"q": "Combien font 144 ÷ 12 ?", "type": "nombre", "h": ["369f57a7f4f6d09005fdc7bc4846d6a03063eb7037cd2964bc36d82c84f1d4e1", "39b279b281380f194d0e5b269c82c27a44e9d610935f8d48d4033cbc8d41a084"]}, {"q": "Quelle planète est la plus proche du Soleil ?", "type": "texte", "h": ["6259f0121391f728425a1c2a9d4ae9f5037ccbbaea0cc825175824d690fe7f46"]}, {"q": "Quelle est la capitale de l'Espagne ?", "type": "texte", "h": ["94a1d726e4adbceafea7bccf809ce3904812704e1782e9f2a2c9629a677ccf6e"]}, {"q": "Combien font 15 % de 200 ?", "type": "nombre", "h": ["cb70c2ebb5e4ebb87d8db877adcdc3afa33ffafe14c6ccdf7e3f25d120c8c353", "8f976fc6b8224f99a7e7b61d0b90705eb7607f3058fc9b4bd77e409309f703c4"]}, {"q": "Qui a peint la Joconde ?", "type": "texte", "h": ["cc68cc09caa6b586e86a673a00c97e37777a546d7323957e8879f8c348ca13b3", "05ee40078d00d60d6ff901ffac2945697ac413c3465b1bcb3465252f0a0560b7", "163c228afe2ec63aeb49ebfa165ecd9ea1c724b0bc4701728720c2c009f79fe8", "6b6b56e30347cfb8a77188ed2c304c31ece5a60a40b7c718385e10434281cc44"]}, {"q": "Quelle est la capitale du Brésil ?", "type": "texte", "h": ["f87a543baa4522626d460505a1b2f2d739224eee3c519d8f19dd9e2c823ee3f4"]}, {"q": "Quelle est la racine carrée de 81 ?", "type": "nombre", "h": ["9c056e170530058aae4c9c1786b999425b93d0df87cc26a9d974d38155fd496b", "74a23c2380fd79d2f9987c6edec7d6c64c2318275712d1877672f6474695551f"]}, {"q": "Quel est le plus long fleuve de France ?", "type": "texte", "h": ["014fb62980a06ca5e9868d33ac88324da0c4b6acb51193d47327fffd85846a0b", "014fb62980a06ca5e9868d33ac88324da0c4b6acb51193d47327fffd85846a0b"]}, {"q": "Quel est le symbole chimique de l'eau ?", "type": "texte", "h": ["564a28b3960413ab62a3c4147f77a7e48edd3f4ddf7d6ff633d041fdd45574aa"]}, {"q": "Combien font 2 puissance 6 (2⁶) ?", "type": "nombre", "h": ["305788abff3013177193e33d470eff0b61238ecd810f2479c27166470f7b94a0"]}, {"q": "Quelle est la capitale de l'Égypte ?", "type": "texte", "h": ["edeabbab9b8d00541c27dffaa065c3c6b3bf12b938001fae3a0a4f762b867177", "edeabbab9b8d00541c27dffaa065c3c6b3bf12b938001fae3a0a4f762b867177"]}, {"q": "En quelle année a eu lieu la Révolution française ?", "type": "nombre", "h": ["cef20627cb2ac07e4226f08ec59c077d42734c5cb4f84f2bd145bc4173244e01"]}, {"q": "Combien font 3 + 3 × 3 ?", "type": "nombre", "h": ["369f57a7f4f6d09005fdc7bc4846d6a03063eb7037cd2964bc36d82c84f1d4e1", "39b279b281380f194d0e5b269c82c27a44e9d610935f8d48d4033cbc8d41a084"]}, {"q": "Combien de joueurs une équipe de football aligne-t-elle sur le terrain ?", "type": "nombre", "h": ["cb04986e6d0b9d1ead8ef901fafce867fac5e3e8e5f393d7bf9636767818562a", "e86e18d97a6301bbd888ffb8be8cf4835222a98ab766425bbbf1d9f6c75b8551"]}, {"q": "Quelle est la capitale du Japon ?", "type": "texte", "h": ["b448cd7452a903cdbc5a2422ff95a1e198d51db1cdd4600ae009946f52f329df"]}, {"q": "Quel est le plus grand mammifère du monde ?", "type": "texte", "h": ["c4e7a4a0cf18dd0317958c57e10e3fe0f6819f068b0529e35f082731ffa33614", "c4e7a4a0cf18dd0317958c57e10e3fe0f6819f068b0529e35f082731ffa33614", "11d6d2d1a9c99810fcb92bd74ac9eea332364a6a26ebc5f0b2d7ac48ce790ca4"]}, {"q": "Combien font 1000 − 487 ?", "type": "nombre", "h": ["71a9f5d219f13196f5edfd31c8e0a33abfe61957341a26e0d8252941c78d6066"]}, {"q": "Quelle est la capitale de l'Italie ?", "type": "texte", "h": ["c538daa84ab99dff4078e2304da85db2a24cba099ec3269b4a710fc4fb90ae2e"]}, {"q": "Combien de minutes y a-t-il dans une journée ?", "type": "nombre", "h": ["a9f299060fd9ea90c79e1f5ef8cf788e0162844241e863874719ef94bbf368a2"]}, {"q": "Quel gaz est le plus présent dans l'air que nous respirons ?", "type": "texte", "h": ["814609b1f30af1e9b00d68b197350c18b2ddce66b9fec32259356f442be8e2ab", "814609b1f30af1e9b00d68b197350c18b2ddce66b9fec32259356f442be8e2ab", "b21cd650f25bdc0a6b57cc28d26e20a9ba11c330ebf1f194649b5efd13bd24b5"]}, {"q": "Complète la suite : 2, 4, 8, 16, ?", "type": "nombre", "h": ["0538ae37e5bb260e46b12c2b5d85d67df741a39169cb938af7051cd7645fc085"]}, {"q": "Quelle est la capitale de la Turquie ?", "type": "texte", "h": ["07fc2e29be24a87b07b22f2ff136e1c98a2489e306609ae19ff05fd39973faf7"]}]};
+window.DATA = {"titre": "LA TRACE", "conf": "Ambassadeur du Christ", "sel": "dco-abc-2026", "vies": 3, "longueur": 5, "vitesse": 650, "faux": ["Cherche encore.", "Plus loin.", "Ce n'est pas celui-là.", "Regarde ailleurs.", "Continue de chercher.", "Ce n'est pas ici.", "Pas le bon. Cherche autre chose."], "tokens": ["9cc071", "88d621", "0228f2", "ecbcac", "af58bb", "5067e6", "54b868", "65ce07", "55b993", "1dc45a", "e189c0", "908762", "02df19", "695241", "80ae26", "33c3a0", "7c7a6b", "960414", "a418ca", "df239c", "8cff93", "95200c", "94d605", "e74969", "5c34b5", "d4e402", "0e70d3", "1591c7", "41a92f", "ddfbef"], "reelHash": "41715043ab254d5f185e922100551af66e8c66091e295abea8f38a19a4af2cd0", "equipes": [{"id": "1", "ind": "b3707c1487d2"}, {"id": "2", "ind": "a07908abdf64"}, {"id": "3", "ind": "c8724552d676"}, {"id": "4", "ind": "179296061d5e"}, {"id": "5", "ind": "16ceae7e2c2e"}, {"id": "6", "ind": "2f355d5c85f7"}, {"id": "7", "ind": "7571b159b6f3"}, {"id": "8", "ind": "a121b8ec95ac"}, {"id": "9", "ind": "6924697606ee"}, {"id": "10", "ind": "1a6010ffc471"}], "questions": [{"q": "Quelle est la capitale de la Suisse ?", "type": "texte", "h": ["e1725498b63671c970f0c637d9aee473c790938c847684a09c10dd864700ca5e"]}, {"q": "Combien font 10 × 5 − 3 + 5 ?", "type": "nombre", "h": ["e5fc5749bce1b66ed2c51739cb05853329ca14de9a21a10608353990d8e78717"]}, {"q": "Combien de côtés a un hexagone ?", "type": "nombre", "h": ["ce8643600285e009b196bf47c2da8caa476c402a66a1fcc6f0cec58907b7aa3d", "6a5df845493427fa10213ee79fb429812d2a61a7f2e7ece6b92cf02b7bdada63"]}, {"q": "Quelle est la capitale de l'Australie ?", "type": "texte", "h": ["72e7fb6209e63daca28e4909a5fad33edb52bbafb7c5d13add257de891708fb9"]}, {"q": "Combien font 7 × 8 ?", "type": "nombre", "h": ["b0f7e7617c09721428f30a907ee921a960e309668e5748570aaffa9348f8b91f"]}, {"q": "Quel est le plus grand océan du monde ?", "type": "texte", "h": ["f7f2ea7c9508b1af532acf4e192d3fe97337d1c43dca47994d032b5effad63c8", "05a9efd74e8773f2c479289b82b9652ead24aab8eb18cda852c37b1bdc7c883c"]}, {"q": "Combien de jours compte une année bissextile ?", "type": "nombre", "h": ["cb40cdde75c07c726daeabd70fc28405ca8f4232a9436558ce01c436bf89421f"]}, {"q": "Quelle est la capitale du Canada ?", "type": "texte", "h": ["105ddf7fe167f5635d01e524e8a92d28c306191cb9d31448c4e0374517e953c1"]}, {"q": "Combien font 144 ÷ 12 ?", "type": "nombre", "h": ["369f57a7f4f6d09005fdc7bc4846d6a03063eb7037cd2964bc36d82c84f1d4e1", "39b279b281380f194d0e5b269c82c27a44e9d610935f8d48d4033cbc8d41a084"]}, {"q": "Quelle planète est la plus proche du Soleil ?", "type": "texte", "h": ["6259f0121391f728425a1c2a9d4ae9f5037ccbbaea0cc825175824d690fe7f46"]}, {"q": "Quelle est la capitale de l'Espagne ?", "type": "texte", "h": ["94a1d726e4adbceafea7bccf809ce3904812704e1782e9f2a2c9629a677ccf6e"]}, {"q": "Combien font 15 % de 200 ?", "type": "nombre", "h": ["cb70c2ebb5e4ebb87d8db877adcdc3afa33ffafe14c6ccdf7e3f25d120c8c353", "8f976fc6b8224f99a7e7b61d0b90705eb7607f3058fc9b4bd77e409309f703c4"]}, {"q": "Qui a peint la Joconde ?", "type": "texte", "h": ["cc68cc09caa6b586e86a673a00c97e37777a546d7323957e8879f8c348ca13b3", "05ee40078d00d60d6ff901ffac2945697ac413c3465b1bcb3465252f0a0560b7", "163c228afe2ec63aeb49ebfa165ecd9ea1c724b0bc4701728720c2c009f79fe8", "6b6b56e30347cfb8a77188ed2c304c31ece5a60a40b7c718385e10434281cc44"]}, {"q": "Quelle est la capitale du Brésil ?", "type": "texte", "h": ["f87a543baa4522626d460505a1b2f2d739224eee3c519d8f19dd9e2c823ee3f4"]}, {"q": "Quelle est la racine carrée de 81 ?", "type": "nombre", "h": ["9c056e170530058aae4c9c1786b999425b93d0df87cc26a9d974d38155fd496b", "74a23c2380fd79d2f9987c6edec7d6c64c2318275712d1877672f6474695551f"]}, {"q": "Quel est le plus long fleuve de France ?", "type": "texte", "h": ["014fb62980a06ca5e9868d33ac88324da0c4b6acb51193d47327fffd85846a0b", "014fb62980a06ca5e9868d33ac88324da0c4b6acb51193d47327fffd85846a0b"]}, {"q": "Quel est le symbole chimique de l'eau ?", "type": "texte", "h": ["564a28b3960413ab62a3c4147f77a7e48edd3f4ddf7d6ff633d041fdd45574aa"]}, {"q": "Combien font 2 puissance 6 (2⁶) ?", "type": "nombre", "h": ["305788abff3013177193e33d470eff0b61238ecd810f2479c27166470f7b94a0"]}, {"q": "Quelle est la capitale de l'Égypte ?", "type": "texte", "h": ["edeabbab9b8d00541c27dffaa065c3c6b3bf12b938001fae3a0a4f762b867177", "edeabbab9b8d00541c27dffaa065c3c6b3bf12b938001fae3a0a4f762b867177"]}, {"q": "En quelle année a eu lieu la Révolution française ?", "type": "nombre", "h": ["cef20627cb2ac07e4226f08ec59c077d42734c5cb4f84f2bd145bc4173244e01"]}, {"q": "Combien font 3 + 3 × 3 ?", "type": "nombre", "h": ["369f57a7f4f6d09005fdc7bc4846d6a03063eb7037cd2964bc36d82c84f1d4e1", "39b279b281380f194d0e5b269c82c27a44e9d610935f8d48d4033cbc8d41a084"]}, {"q": "Combien de joueurs une équipe de football aligne-t-elle sur le terrain ?", "type": "nombre", "h": ["cb04986e6d0b9d1ead8ef901fafce867fac5e3e8e5f393d7bf9636767818562a", "e86e18d97a6301bbd888ffb8be8cf4835222a98ab766425bbbf1d9f6c75b8551"]}, {"q": "Quelle est la capitale du Japon ?", "type": "texte", "h": ["b448cd7452a903cdbc5a2422ff95a1e198d51db1cdd4600ae009946f52f329df"]}, {"q": "Quel est le plus grand mammifère du monde ?", "type": "texte", "h": ["c4e7a4a0cf18dd0317958c57e10e3fe0f6819f068b0529e35f082731ffa33614", "c4e7a4a0cf18dd0317958c57e10e3fe0f6819f068b0529e35f082731ffa33614", "11d6d2d1a9c99810fcb92bd74ac9eea332364a6a26ebc5f0b2d7ac48ce790ca4"]}, {"q": "Combien font 1000 − 487 ?", "type": "nombre", "h": ["71a9f5d219f13196f5edfd31c8e0a33abfe61957341a26e0d8252941c78d6066"]}, {"q": "Quelle est la capitale de l'Italie ?", "type": "texte", "h": ["c538daa84ab99dff4078e2304da85db2a24cba099ec3269b4a710fc4fb90ae2e"]}, {"q": "Combien de minutes y a-t-il dans une journée ?", "type": "nombre", "h": ["a9f299060fd9ea90c79e1f5ef8cf788e0162844241e863874719ef94bbf368a2"]}, {"q": "Quel gaz est le plus présent dans l'air que nous respirons ?", "type": "texte", "h": ["814609b1f30af1e9b00d68b197350c18b2ddce66b9fec32259356f442be8e2ab", "814609b1f30af1e9b00d68b197350c18b2ddce66b9fec32259356f442be8e2ab", "b21cd650f25bdc0a6b57cc28d26e20a9ba11c330ebf1f194649b5efd13bd24b5"]}, {"q": "Complète la suite : 2, 4, 8, 16, ?", "type": "nombre", "h": ["0538ae37e5bb260e46b12c2b5d85d67df741a39169cb938af7051cd7645fc085"]}, {"q": "Quelle est la capitale de la Turquie ?", "type": "texte", "h": ["07fc2e29be24a87b07b22f2ff136e1c98a2489e306609ae19ff05fd39973faf7"]}]};
 </script>
 <script>
 (() => {
   const D = window.DATA;
   const $ = (id) => document.getElementById(id);
-  const ECRANS = ['accueil', 'invalide', 'question', 'pasbon', 'jeu', 'gagne'];
+  const ECRANS = ['equipe', 'accueil', 'invalide', 'question', 'pasbon', 'jeu', 'gagne'];
   const total = D.tokens.length;
 
   // ── Mémoire du téléphone (si elle est bloquée, le jeu marche quand même) ──
+  const cleEquipe = 'trace_v2_' + D.sel + '_equipe';
+  let equipeId = null;
+  try { equipeId = localStorage.getItem(cleEquipe); } catch (e) { /* choix en mémoire si stockage bloqué */ }
+  if (!D.equipes.some(e => e.id === equipeId)) equipeId = null;
+  const cleStock = cle => 'trace_v2_' + D.sel + '_equipe_' + equipeId + '_' + cle;
   const stock = {
-    lire(cle, defaut) { try { const v = localStorage.getItem('trace_' + cle); return v ? JSON.parse(v) : defaut; } catch (e) { return defaut; } },
-    ecrire(cle, val) { try { localStorage.setItem('trace_' + cle, JSON.stringify(val)); } catch (e) { /* ignoré */ } },
+    lire(cle, defaut) { try { const v = localStorage.getItem(cleStock(cle)); return v ? JSON.parse(v) : defaut; } catch (e) { return defaut; } },
+    ecrire(cle, val) { try { localStorage.setItem(cleStock(cle), JSON.stringify(val)); } catch (e) { /* ignoré */ } },
   };
   let vus = stock.lire('vus', []);
   let gagne = stock.lire('gagne', null);
@@ -555,12 +610,36 @@ window.DATA = {"titre": "LA TRACE", "conf": "DCO ABC", "sel": "dco-abc-2026", "v
   document.title = D.titre + ' — ' + D.conf;
 
   function afficherGagne() {
-    $('indice').textContent = dechiffrer(D.ind, gagne.cle);
+    const equipe = D.equipes.find(e => e.id === equipeId);
+    if (!equipe || !gagne || gagne.equipe !== equipeId) return montrer('accueil');
+    $('indice').textContent = dechiffrer(equipe.ind, gagne.cle + ':equipe:' + equipeId);
+    $('gagneNote').textContent = "Équipe " + equipeId + " : montrez cet écran à l'organisateur et notez votre indice.";
     $('heureVictoire').textContent = 'Validé à ' + gagne.heure;
     montrer('gagne');
   }
 
+  D.equipes.forEach(e => {
+    const option = document.createElement('option'); option.value = e.id; option.textContent = 'Équipe ' + e.id; $('nomEquipe').append(option);
+  });
+  $('formEquipeQR').addEventListener('submit', e => {
+    e.preventDefault();
+    const choix = $('nomEquipe').value;
+    if (!D.equipes.some(e => e.id === choix)) return;
+    equipeId = choix;
+    try { localStorage.setItem(cleEquipe, equipeId); } catch (e) { /* fonctionnement sans stockage */ }
+    vus = stock.lire('vus', []); gagne = stock.lire('gagne', null);
+    ouvrir();
+  });
+  $('changerEquipe').addEventListener('click', () => {
+    try { localStorage.removeItem(cleEquipe); } catch (e) { /* ignoré */ }
+    // Rechargement : annule toute séquence ou validation en cours et conserve le QR scanné.
+    location.reload();
+  });
+
   function ouvrir() {
+    $('equipeBarre').hidden = !equipeId;
+    if (!equipeId) { montrer('equipe'); $('nomEquipe').focus(); return; }
+    $('equipeActuelle').textContent = 'Équipe ' + equipeId;
     const params = new URLSearchParams(location.search);
     // ?reset=1 : remet ce téléphone à zéro (utile pour tester), puis retire le paramètre de l'adresse.
     if (params.get('reset')) {
@@ -639,7 +718,7 @@ window.DATA = {"titre": "LA TRACE", "conf": "DCO ABC", "sel": "dco-abc-2026", "v
     function victoire() {
       accepte = false;
       const d = new Date(), p = (n) => String(n).padStart(2, '0');
-      gagne = { heure: `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`, cle: code };
+      gagne = { heure: `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`, cle: code, equipe: equipeId };
       stock.ecrire('gagne', gagne);
       sfx.gagne();
       setTimeout(afficherGagne, 700);
